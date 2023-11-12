@@ -7,7 +7,7 @@ from amlfs_hsm_tools import __version__
 setup(name='amlfs_hsm_tools',
       version=__version__,
       description='Python package to allow AMLFS HSM operations',
-      long_description=long_description,
+      long_description="",
       url='https://github.com/wolfgang-desalvador/amlfs-hsm-tools',
       license='MIT License',
       author='Wolfgang De Salvador',
