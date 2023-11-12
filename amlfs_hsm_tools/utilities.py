@@ -13,7 +13,7 @@ def get_relative_path(path):
     while not os.path.ismount(mountPath):
         mountPath = os.path.dirname(mountPath)
 
-    relativePath = os.path.abspath(path).replace(mountPath, "")    
+    relativePath = os.path.abspath(path).replace(mountPath, '')    
 
     if relativePath[0] == '/':
         relativePath = relativePath[1:]

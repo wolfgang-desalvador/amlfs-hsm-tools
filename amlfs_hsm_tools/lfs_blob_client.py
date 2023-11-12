@@ -5,7 +5,7 @@ from .utilities import loadConfiguration
 
 
 class LFSBlobClient(BlobServiceClient):
-    def __init__(self, configurationFile='/etc/az_lfs_hsm_tools.json', **kwargs) -> None:
+    def __init__(self, configurationFile='/etc/amlfs_hsm_tools.json', **kwargs) -> None:
         configuration = loadConfiguration(configurationFile)
         self.accountURL = configuration.get('accountURL')
         self.containerName = configuration.get('containerName')
