@@ -24,10 +24,10 @@ class AzureManagedLustreHSM:
     def runHSMAction(action, filePath):
         try:
             subprocess.check_output(["lfs", action, filePath])
-            return False
+            return True
         except subprocess.CalledProcessError as error:
             logging.error('LFS command failed with error {}. '.format(str(error)))
-            return True
+            return False
 
     def getBlobClient(self, filePath):
         return self.client.get_blob_client(container=self.client.containerName, blob=get_relative_path(filePath))
