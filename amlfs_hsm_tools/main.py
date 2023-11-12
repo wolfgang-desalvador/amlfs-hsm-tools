@@ -16,6 +16,7 @@ def main():
     logger = logging.getLogger()
 
     file_names = args.filenames
+    print(args.filenames)
     print(args.action)
     print(args.force)
     
