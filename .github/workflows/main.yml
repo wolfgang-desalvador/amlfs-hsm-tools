@@ -1,0 +1,49 @@
+# Based on example from https://github.com/actions/upload-release-asset
+on:
+  push:
+    # Sequence of patterns matched against refs/tags
+    tags:
+    - '*' # Push events to matching v*, i.e. v1.0, v20.15.10
+
+name: Upload Release Asset
+
+jobs:
+  build:
+    name: Upload Release Asset
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+      - name: Build wheel
+        run: |
+          python -m pip install wheel
+          python setup.py bdist_wheel
+          
+      - name: Get the version
+        id: get_version
+        run: echo ::set-output name=VERSION::${GITHUB_REF#refs/tags/}
+        
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref }}
+          draft: false
+          prerelease: false
+      - name: Upload wheel
+        id: upload-wheel
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: dist/amlfs_hsm_tools-${{ steps.get_version.outputs.version }}-py3-none-any.whl
+          asset_name: amlfs_hsm_tools-${{ steps.get_version.outputs.version }}-py3-none-any.whl
+          asset_content_type: application/octet-stream
+          
