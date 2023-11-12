@@ -41,7 +41,7 @@ class AzureManagedLustreHSM:
     
     def isFileArchived(self, filePath):
         fileStatus = self.getHSMState(filePath)
-        return 'arhived' in fileStatus
+        return 'archived' in fileStatus
     
     def isFileDirty(self, filePath):
         fileStatus = self.getHSMState(filePath)
