@@ -1,6 +1,4 @@
 import json
-import subprocess
-import logging
 import os
 
 def loadConfiguration(file):

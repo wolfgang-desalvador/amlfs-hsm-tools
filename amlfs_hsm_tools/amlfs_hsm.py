@@ -68,10 +68,10 @@ class AzureManagedLustreHSM:
         absolutePath = os.path.abspath(filePath)
         if force or not (self.isFileReleased(absolutePath) or not self.isFileArchived(absolutePath)):
             try:
-                blobClient = self.getBlobClient(absolutePath)
-                blobClient.delete_blob()
+                if not self.runHSMAction('hsm_remove', absolutePath):
+                    blobClient = self.getBlobClient(absolutePath)
+                    blobClient.delete_blob()
             except ResourceNotFoundError as error:
-                self.runHSMAction('hsm_remove', absolutePath)
                 if force:
                     logging.info('File {} seems not to be anymore on the HSM backend.'.format(absolutePath))
                 else:
@@ -110,3 +110,10 @@ class AzureManagedLustreHSM:
             logging.info('File {} successfully archived.'.format(absolutePath))
         else:
             logging.error('File {} failed to archive.'.format(absolutePath))
+    
+    def check(self, filePath, force=False):
+        absolutePath = os.path.abspath(filePath)
+        if not self.isFileOnHSM(absolutePath) and self.isFileArchived(absolutePath):
+            logging.error('File {} seems not to be anymore on the HSM backend. Marking as dirty and lost.'.format(absolutePath))
+            self.markDirty(absolutePath)
+            self.markLost(absolutePath)
