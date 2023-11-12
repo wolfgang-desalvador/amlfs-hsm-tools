@@ -10,7 +10,7 @@ def main():
 
     parser.add_argument('action', choices=['release', 'archive', 'remove'])
     parser.add_argument('-f', "--force", default=False, required=False, action='store_true', help="This forces removal from Blob Storage independently from the HSM status. Use carefully.")     
-    parser.add_argument('filenames', action="append", nargs="+", type=list)
+    parser.add_argument('filenames', nargs="+", type=str)
     args, extras = parser.parse_known_args()
     
     logger = logging.getLogger()
