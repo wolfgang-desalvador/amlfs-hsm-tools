@@ -16,12 +16,9 @@ def main():
     logger = logging.getLogger()
 
     file_names = args.filenames
-    print(args.filenames)
-    print(args.action)
-    print(args.force)
-    
+   
     for file in file_names:
-
+        logger.info('Processing file {}'.format(file))
         if os.path.isdir(file):
             logger.error('HSM operates on files, not on folders. The input path refers to a folder. {} will be skipped.'.format(file))
         elif os.path.exists(file):

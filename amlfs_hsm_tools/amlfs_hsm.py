@@ -102,7 +102,7 @@ class AzureManagedLustreHSM:
     def archive(self, filePath, force=False):
         absolutePath = os.path.abspath(filePath)
         if not self.isFileOnHSM(absolutePath) and self.isFileArchived(absolutePath):
-            logging.info("File {} seems not to be anymore on the HSM backend. Marking as dirty and lost.".format(absolutePath))
+            logging.error("File {} seems not to be anymore on the HSM backend. Marking as dirty and lost.".format(absolutePath))
             self.markDirty(absolutePath)
             self.markLost(absolutePath)
        
