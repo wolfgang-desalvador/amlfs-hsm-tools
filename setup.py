@@ -2,9 +2,6 @@ from setuptools import setup, Command
 
 from distutils.command.build_py import build_py
 
-with open('README.md') as infile:
-    long_description = infile.read()
-
 from amlfs_hsm_tools import __version__
 
 setup(name='amlfs_hsm_tools',
