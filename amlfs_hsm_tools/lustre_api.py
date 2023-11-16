@@ -65,7 +65,7 @@ def get_hsm_state(filename):
     state = hsm_state()
     err = lustre.llapi_hsm_state_get(
         filename.encode('utf8'),
-        ctypes.byref(hsm_state))
+        ctypes.byref(state))
     if err < 0:
         err = 0 - err
         raise IOError(err, os.strerror(err))
