@@ -70,7 +70,7 @@ class AzureManagedLustreHSM:
         lustreUUID = xattr.getxattr(get_relative_path(filePath), "trusted.lhsm_uuid")
         return not lustreUUID or lustreUUID == get_relative_path(filePath) 
 
-    def isFileHealthyInHSM(self, filePath):
+    def isFileHealthyInHSM(self, absolutePath):
         isFileOnHSM = self.isFileOnHSM(absolutePath) or self.isFileArchived(absolutePath)
         isHSMAligned = self.checkFileAlignment(absolutePath)
         return isFileOnHSM and isHSMAligned
@@ -121,7 +121,7 @@ class AzureManagedLustreHSM:
     
     def check(self, filePath, force=False):
         absolutePath = os.path.abspath(filePath)
-        if not isFileHealthyInHSM(absolutePath):
+        if not self.isFileHealthyInHSM(absolutePath):
             logging.error('File {} seems not to be anymore on the HSM backend. Marking as dirty and lost.'.format(absolutePath))
             self.markDirty(absolutePath)
             self.markLost(absolutePath)
