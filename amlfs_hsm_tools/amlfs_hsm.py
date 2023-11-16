@@ -69,7 +69,7 @@ class AzureManagedLustreHSM:
         self.markHSMState(HSM_DIRTY_STATE, filePath)
 
     def checkFileAlignment(self, filePath):
-        lustreUUID = xattr.getxattr(filePath, "trusted.lhsm_uuid")
+        lustreUUID = str(xattr.getxattr(filePath, "trusted.lhsm_uuid"))
         return not lustreUUID or lustreUUID == get_relative_path(filePath) 
 
     def isFileHealthyInHSM(self, filePath):
