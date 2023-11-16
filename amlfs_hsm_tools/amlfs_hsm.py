@@ -73,43 +73,46 @@ class AzureManagedLustreHSM:
         return not lustreUUID or lustreUUID == get_relative_path(filePath) 
 
     def isFileHealthyInHSM(self, filePath):
-        isFileOnHSM = self.isFileOnHSM(filePath) or self.isFileArchived(filePath)
-        isHSMAligned = not self.isFileArchived(filePath) or self.checkFileAlignment(filePath)
-        return isFileOnHSM and isHSMAligned
+        if not self.isFileArchived(filePath):
+            return True
+        else:
+          return self.isFileOnHSM(filePath) and self.checkFileAlignment(filePath)
 
     def remove(self, filePath, force=False):
         absolutePath = os.path.abspath(filePath)
-        if force or not (self.isFileReleased(absolutePath) or not self.isFileArchived(absolutePath)):
-            try:
-                if not self.runHSMAction('hsm_remove', absolutePath):
-                    blobClient = self.getBlobClient(absolutePath)
-                    blobClient.delete_blob()
+        try:
+            self.check(filePath)
+        except Exception as error:
+            if force:
+                logging.info('File {} seems not to be anymore on Lustre, continuning since forcing.'.format(absolutePath))
+            else:
+                raise error
+        
+        if os.path.exists(filePath):
+            if not (self.isFileReleased(filePath) or self.isFileDirty(filePath) or self.isFileLost(filePath)):
+                if self.runHSMAction('hsm_remove', absolutePath):
+                    logging.info('File {} successfully removed from HSM backend.'.format(absolutePath))
+                else:
+                    logging.error('File {} failed to remove from HSM backend.'.format(absolutePath))
+        elif force:
+            try:      
+                blobClient = self.getBlobClient(absolutePath)
+                blobClient.delete_blob()
             except ResourceNotFoundError as error:
                 if force:
                     logging.info('File {} seems not to be anymore on the HSM backend.'.format(absolutePath))
                 else:
                     logging.error('File {} seems not to be anymore on the HSM backend even if hsm_state expects it to be there.'.format(filePath))
-            try:
-                self.markDirty(filePath)
-                self.markLost(filePath)
-            except subprocess.CalledProcessError:
-                if force:
-                    pass
-                else:
-                    logging.error('Failed in setting hsm_state correctly. Please check the file {} status.'.format(absolutePath))
         else:
             logging.error('Failed in setting hsm_state correctly. Please check the file {} status.'.format(absolutePath))
 
     def release(self, filePath, force=False):
         absolutePath = os.path.abspath(filePath)
         self.check(absolutePath)
-        if self.isFileArchived and not self.isFileDirty(absolutePath) and not self.isFileLost(absolutePath):
-            if self.runHSMAction('hsm_release', absolutePath):
-                logging.info('File {} successfully released.'.format(absolutePath))
-            else:
-                logging.error('File {} failed to release.'.format(absolutePath))
+        if self.runHSMAction('hsm_release', absolutePath):
+            logging.info('File {} successfully released.'.format(absolutePath))
         else:
-            logging.error('File {} failed to release since not in archived clean state.'.format(absolutePath))
+            logging.error('File {} failed to release.'.format(absolutePath))
     
     def archive(self, filePath, force=False):
         absolutePath = os.path.abspath(filePath)
