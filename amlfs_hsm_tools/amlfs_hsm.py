@@ -2,6 +2,8 @@ import os
 import logging
 import subprocess
 
+import xattr
+
 from .lfs_blob_client import LFSBlobClient
 from .utilities import get_relative_path
 from azure.core.exceptions import ResourceNotFoundError
@@ -64,6 +66,16 @@ class AzureManagedLustreHSM:
     def markDirty(self, filePath):
         self.markHSMState('dirty', filePath)
 
+    def checkFileAlignment(self, filePath):
+        lustreUUID = xattr.getxattr(get_relative_path(filePath), "trusted.lhsm_uuid")
+        return not lustreUUID or lustreUUID == get_relative_path(filePath) 
+
+    def isFileHealthyInHSM(self, filePath):
+        isFileOnHSM = self.isFileOnHSM(absolutePath) or self.isFileArchived(absolutePath)
+        isHSMAligned = self.checkFileAlignment(absolutePath)
+        return isFileOnHSM and isHSMAligned
+
+
     def remove(self, filePath, force=False):
         absolutePath = os.path.abspath(filePath)
         if force or not (self.isFileReleased(absolutePath) or not self.isFileArchived(absolutePath)):
@@ -89,11 +101,7 @@ class AzureManagedLustreHSM:
 
     def release(self, filePath, force=False):
         absolutePath = os.path.abspath(filePath)
-        if not self.isFileOnHSM(absolutePath) and self.isFileArchived(absolutePath):
-            logging.info('File {} seems not to be anymore on the HSM backend. Marking as dirty and lost.'.format(absolutePath))
-            self.markDirty(absolutePath)
-            self.markLost(absolutePath)
-            self.archive(filePath)
+        self.check(absolutePath)
         if self.isFileArchived and not self.isFileDirty(absolutePath) and not self.isFileLost(absolutePath):
             if self.runHSMAction('hsm_release', absolutePath):
                 logging.info('File {} successfully released.'.format(absolutePath))
@@ -104,10 +112,7 @@ class AzureManagedLustreHSM:
     
     def archive(self, filePath, force=False):
         absolutePath = os.path.abspath(filePath)
-        if not self.isFileOnHSM(absolutePath) and self.isFileArchived(absolutePath):
-            logging.error('File {} seems not to be anymore on the HSM backend. Marking as dirty and lost.'.format(absolutePath))
-            self.markDirty(absolutePath)
-            self.markLost(absolutePath)
+        self.check(absolutePath)
        
         if self.runHSMAction('hsm_archive', absolutePath):
             logging.info('File {} successfully archived.'.format(absolutePath))
@@ -116,7 +121,8 @@ class AzureManagedLustreHSM:
     
     def check(self, filePath, force=False):
         absolutePath = os.path.abspath(filePath)
-        if not self.isFileOnHSM(absolutePath) and self.isFileArchived(absolutePath):
+        if not isFileHealthyInHSM(absolutePath):
             logging.error('File {} seems not to be anymore on the HSM backend. Marking as dirty and lost.'.format(absolutePath))
             self.markDirty(absolutePath)
             self.markLost(absolutePath)
+        
