@@ -4,9 +4,13 @@ import subprocess
 
 import xattr
 
+from .lustreapi_hsm import get_hsm_state, set_hsm_state
 from .lfs_blob_client import LFSBlobClient
+from .lustre_hsm_constants import HSM_ARCHIVED_STATE, HSM_DIRTY_STATE, HSM_EXISTS_STATE, HSM_LOST_STATE, HSM_NOARCHIVE_STATE, \
+                                  HSM_NONE_STATE, HSM_NORELEASE_STATE, HSM_RELEASED_STATE
 from .utilities import get_relative_path
 from azure.core.exceptions import ResourceNotFoundError
+
 
 class AzureManagedLustreHSM:
     def __init__(self) -> None:
@@ -15,56 +19,45 @@ class AzureManagedLustreHSM:
     @staticmethod
     def getHSMState(filePath):
         try:
-            fileStatus = str(subprocess.check_output(['lfs', 'hsm_state', filePath]))
+            return get_hsm_state(filePath)
         except subprocess.CalledProcessError as error:
-            logging.error('LFS command failed with error {}. Are you sure you are running the utility on a Lustre mount?'.format(str(error)))
-            fileStatus = None
-
-        return fileStatus
-    
-    @staticmethod
-    def runHSMAction(action, filePath):
-        try:
-            subprocess.check_output(['lfs', action, filePath])
-            return True
-        except subprocess.CalledProcessError as error:
-            logging.error('LFS command failed with error {}. '.format(str(error)))
-            return False
+            logging.error('Failed in getting hsm_state correctly. Please check the file status.')
+            raise error  
 
     def getBlobClient(self, filePath):
         return self.client.get_blob_client(container=self.client.containerName, blob=get_relative_path(filePath))
     
-    def isFileOnHSM(self,filePath):
+    def isFileOnHSM(self, filePath):
         return self.getBlobClient(filePath).exists()
 
     def isFileReleased(self, filePath):
         fileStatus = self.getHSMState(filePath)
-        return 'released' in fileStatus
+        return HSM_RELEASED_STATE in fileStatus
     
     def isFileArchived(self, filePath):
         fileStatus = self.getHSMState(filePath)
-        return 'archived' in fileStatus
+        return HSM_ARCHIVED_STATE in fileStatus
     
     def isFileDirty(self, filePath):
         fileStatus = self.getHSMState(filePath)
-        return 'dirty' in fileStatus
+        return HSM_DIRTY_STATE in fileStatus
     
     def isFileLost(self, filePath):
         fileStatus = self.getHSMState(filePath)
-        return 'lost' in fileStatus
+        return HSM_LOST_STATE in fileStatus
     
     def markHSMState(self, state, filePath):
         try:
-            subprocess.check_output(['lfs', 'hsm_set', '--{}'.format(state), filePath])
+            set_hsm_state(filePath, [state], [], 1)
         except subprocess.CalledProcessError as error:
             logging.error('Failed in setting hsm_state correctly. Please check the file status.')
             raise error
 
     def markLost(self, filePath):
-        self.markHSMState('lost', filePath)
+        self.markHSMState(HSM_LOST_STATE, filePath)
 
     def markDirty(self, filePath):
-        self.markHSMState('dirty', filePath)
+        self.markHSMState(HSM_DIRTY_STATE, filePath)
 
     def checkFileAlignment(self, filePath):
         lustreUUID = xattr.getxattr(get_relative_path(filePath), "trusted.lhsm_uuid")
@@ -74,7 +67,6 @@ class AzureManagedLustreHSM:
         isFileOnHSM = self.isFileOnHSM(absolutePath) or self.isFileArchived(absolutePath)
         isHSMAligned = self.checkFileAlignment(absolutePath)
         return isFileOnHSM and isHSMAligned
-
 
     def remove(self, filePath, force=False):
         absolutePath = os.path.abspath(filePath)
