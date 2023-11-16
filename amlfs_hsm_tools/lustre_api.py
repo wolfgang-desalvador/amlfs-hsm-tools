@@ -64,7 +64,7 @@ lustre.llapi_hsm_state_set.argtypes = [ctypes.c_char_p, ctypes.c_uint,
 def get_hsm_state(filename):
     state = hsm_state()
     err = lustre.llapi_hsm_state_get(
-        filename,
+        ctypes.byref(filename),
         ctypes.byref(state))
     if err < 0:
         err = 0 - err
