@@ -1,5 +1,4 @@
 import ctypes
-import ctypes.util
 import os
 
 from .lustre_hsm_constants import HSM_STATE_MAP

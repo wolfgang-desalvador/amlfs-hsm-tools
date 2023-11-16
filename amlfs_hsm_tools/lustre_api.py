@@ -1,5 +1,5 @@
 import ctypes
-import os
+import ctypes.util
 
 liblocation = ctypes.util.find_library("lustreapi")
 lustre = ctypes.CDLL(liblocation, use_errno=True)
