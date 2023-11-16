@@ -62,11 +62,11 @@ lustre.llapi_hsm_state_set.argtypes = [ctypes.c_char_p, ctypes.c_uint,
                                        ctypes.c_uint, ctypes.c_uint]
 
 def get_hsm_state(filename):
-    hsm_state = hsm_state()
+    state = hsm_state()
     err = lustre.llapi_hsm_state_get(
         filename.encode('utf8'),
         ctypes.byref(hsm_state))
     if err < 0:
         err = 0 - err
         raise IOError(err, os.strerror(err))
-    return hsm_states_list_from_status_flag(int(hsm_state.hus_states))
+    return hsm_states_list_from_status_flag(int(state.hus_states))
