@@ -3,7 +3,7 @@ import os
 
 from .lustre_hsm_constants import HSM_STATE_MAP
 
-from .lustre_api import llapi_hsm_state_get, llapi_hsm_state_set, hsm_state
+from .lustreapi import llapi_hsm_state_get, llapi_hsm_state_set, hsm_state
 
 
 def hsm_states_list_from_status_flag(status_flag):
