@@ -120,3 +120,4 @@ class AzureManagedLustreHSM:
             logging.error('File {} seems not to be anymore on the HSM backend. Marking as dirty and lost.'.format(absolutePath))
             self.markDirty(absolutePath)
             self.markLost(absolutePath)
+        
