@@ -24,11 +24,20 @@ class AzureManagedLustreHSM:
             logging.error('Failed in getting hsm_state correctly. Please check the file status.')
             raise error  
 
+    @staticmethod
+    def runHSMAction(action, filePath):
+        try:
+            subprocess.check_output(['lfs', action, filePath])
+            return True
+        except subprocess.CalledProcessError as error:
+            logging.error('LFS command failed with error {}. '.format(str(error)))
+            return False
+        
     def getBlobClient(self, filePath):
         return self.client.get_blob_client(container=self.client.containerName, blob=get_relative_path(filePath))
     
     def isFileOnHSM(self, filePath):
-        return self.getBlobClient(filePath).exists()
+        return self.getBlobClient(get_relative_path(filePath)).exists()
 
     def isFileReleased(self, filePath):
         fileStatus = self.getHSMState(filePath)
@@ -60,12 +69,12 @@ class AzureManagedLustreHSM:
         self.markHSMState(HSM_DIRTY_STATE, filePath)
 
     def checkFileAlignment(self, filePath):
-        lustreUUID = xattr.getxattr(get_relative_path(filePath), "trusted.lhsm_uuid")
+        lustreUUID = xattr.getxattr(filePath, "trusted.lhsm_uuid")
         return not lustreUUID or lustreUUID == get_relative_path(filePath) 
 
-    def isFileHealthyInHSM(self, absolutePath):
-        isFileOnHSM = self.isFileOnHSM(absolutePath) or self.isFileArchived(absolutePath)
-        isHSMAligned = self.checkFileAlignment(absolutePath)
+    def isFileHealthyInHSM(self, filePath):
+        isFileOnHSM = self.isFileOnHSM(filePath) or self.isFileArchived(filePath)
+        isHSMAligned = not self.isFileArchived(filePath) or self.checkFileAlignment(filePath)
         return isFileOnHSM and isHSMAligned
 
     def remove(self, filePath, force=False):
