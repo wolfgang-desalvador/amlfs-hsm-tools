@@ -3,7 +3,7 @@ import os
 
 from .lustre_hsm_constants import HSM_STATE_MAP
 
-from .lustreapi import llapi_hsm_state_get, llapi_hsm_state_set, hsm_state
+from .lustreapi import llapi_hsm_state_get, llapi_hsm_state_set, hsm_state, llapi_hsm_request, llapi_hsm_user_request_alloc, path2fid
 
 
 def hsm_states_list_from_status_flag(status_flag):
@@ -40,3 +40,17 @@ def set_hsm_state(filename, setmask, clearmask, archive_id):
         err = 0 - err
         raise IOError(err, os.strerror(err))
     
+
+def hsm_request(filePath, action):
+
+    hsm_user_request = llapi_hsm_user_request_alloc(1, 1)
+    hsm_user_request.hur_request.hr_action = 10
+    hsm_user_request.hur_request.hr_archive_id = 0
+    hsm_user_request.hur_request.hr_archive_id = 0
+
+    hsm_user_request.hur_user_item[0].hui_fid = path2fid(filePath)
+    hsm_user_request.hur_user_item[0].hui_extent.offset = 0
+    #hsm_user_request.hur_user_item[0].hui_extent.length = ctypes.-1LL;
+
+    hsm_user_request.hur_request.hr_itemcount = 1
+    hsm_user_request.hur_request.hr_data_len = 1
