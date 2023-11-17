@@ -108,7 +108,7 @@ class AzureManagedLustreHSM:
                 raise error
         
         if os.path.exists(filePath):
-            if not (self.isFileReleased(filePath) or self.isFileDirty(filePath) or self.isFileLost(filePath)):
+            if not self.isFileReleased(filePath):
                 if self.runHSMAction('hsm_remove', absolutePath):
                     logging.info('File {} successfully removed from HSM backend.'.format(absolutePath))
                 else:
