@@ -113,6 +113,8 @@ class AzureManagedLustreHSM:
                     logging.info('File {} successfully removed from HSM backend.'.format(absolutePath))
                 else:
                     logging.error('File {} failed to remove from HSM backend.'.format(absolutePath))
+                self.markDirty(filePath)
+                self.markLost(filePath)
         elif force:
             try:      
                 blobClient = self.getBlobClient(get_relative_path(absolutePath))
