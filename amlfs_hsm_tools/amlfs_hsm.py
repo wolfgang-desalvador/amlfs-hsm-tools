@@ -33,6 +33,10 @@ class AzureManagedLustreHSM:
             logging.error('LFS command failed with error {}. '.format(str(error)))
             return False
         
+    @staticmethod
+    def getHSMPath(filePath):
+        return xattr.getxattr(filePath, "trusted.lhsm_uuid").decode()
+    
     def getBlobClient(self, filePath):
         return self.client.get_blob_client(container=self.client.containerName, blob=get_relative_path(filePath))
     
@@ -70,8 +74,13 @@ class AzureManagedLustreHSM:
     def markDirty(self, filePath):
         self.markHSMState(HSM_DIRTY_STATE, filePath)
 
+    def causesOverwriteWithDataLoss(self, filePath):
+        causesDataLoss = self.isFileOnHSM(self.getHSMPath(filePath)) and not self.isFileArchived(filePath)
+        logging.warn('Writing down data to blob on file {} causes data loss. No action will be mode for archive.'.format(filePath))
+        return causesDataLoss
+
     def checkFileAlignment(self, filePath):
-        lustreUUID = xattr.getxattr(filePath, "trusted.lhsm_uuid").decode()
+        lustreUUID = self.getHSMPath()
         isFileAligned = not lustreUUID or lustreUUID == get_relative_path(filePath) 
         logging.info('File {} seems aligned with HSM location.'.format(filePath))
         return isFileAligned
@@ -126,18 +135,15 @@ class AzureManagedLustreHSM:
     
     def archive(self, filePath, force=False):
         absolutePath = os.path.abspath(filePath)
-        self.check(absolutePath)
-       
-        if self.runHSMAction('hsm_archive', absolutePath):
-            logging.info('File {} successfully archived.'.format(absolutePath))
-        else:
-            logging.error('File {} failed to archive.'.format(absolutePath))
+        if self.check(absolutePath) and not self.causesOverwriteWithDataLoss(filePath):
+            if self.runHSMAction('hsm_archive', absolutePath):
+                logging.info('File {} successfully archived.'.format(absolutePath))
+            else:
+                logging.error('File {} failed to archive.'.format(absolutePath))
     
     def check(self, filePath, force=False):
         absolutePath = os.path.abspath(filePath)
         if not self.isFileHealthyInHSM(absolutePath):
-            if self.isFileArchived(absolutePath) and self.isFileReleased(absolutePath):
-                self.runHSMAction('hsm_restore', absolutePath)
             logging.warn('File {} seems not to be anymore on the HSM backend. Marking as dirty and lost.'.format(absolutePath))
             self.markDirty(absolutePath)
             self.markLost(absolutePath)
