@@ -45,9 +45,12 @@ class AzureManagedLustreHSM:
         return self.client.get_blob_client(container=self.client.containerName, blob=filePath)
     
     def isFileOnHSM(self, filePath):
-        ifFileOnHSM = self.getBlobClient(filePath).exists()
-        logging.info('File {} seems to be present on HSM location.'.format(filePath))
-        return ifFileOnHSM
+        isFileOnHSM = self.getBlobClient(filePath).exists()
+        if isFileOnHSM:
+            logging.info('File {} seems to be present on HSM location.'.format(filePath))
+        else:
+            logging.warn('File {} is not on HSM in the expected position.'.format(filePath))
+        return isFileOnHSM
 
     def isFileReleased(self, filePath):
         fileStatus = self.getHSMState(filePath)
@@ -85,10 +88,13 @@ class AzureManagedLustreHSM:
             logging.warn('Writing down data to blob on file {} causes data loss. No action will be made for archive.'.format(filePath))
         return causesDataLoss
 
-    def checkFileAlignment(self, filePath):
+    def isFilePathAlignedInHSM(self, filePath):
         lustreUUID = self.getHSMPath(filePath)
-        isFileAligned = not lustreUUID or lustreUUID == get_relative_path(filePath) 
-        logging.info('File {} seems aligned with HSM location.'.format(filePath))
+        isFileAligned = not lustreUUID or lustreUUID == get_relative_path(filePath)
+        if isFileAligned:
+            logging.info('File {} seems aligned with HSM location.'.format(filePath))
+        else:
+            logging.info('File {} seems to point to another HSM location {}.'.format(filePath, lustreUUID))
         return isFileAligned
 
     def isFileHealthyInHSM(self, filePath):
@@ -96,7 +102,7 @@ class AzureManagedLustreHSM:
             logging.info('File {} seems not to be archived. Nothing to check.'.format(filePath))
             return True
         else:
-          return self.isFileOnHSM(get_relative_path(filePath)) and self.checkFileAlignment(filePath)
+          return self.isFileOnHSM(get_relative_path(filePath)) and self.isFilePathAlignedInHSM(filePath)
 
     def remove(self, filePath, force=False):
         absolutePath = os.path.abspath(filePath)
@@ -155,6 +161,8 @@ class AzureManagedLustreHSM:
             logging.warn('File {} seems not to be anymore on the HSM backend. Marking as dirty and lost.'.format(absolutePath))
             self.markDirty(absolutePath)
             self.markLost(absolutePath)
+            if not self.isFilePathAlignedInHSM(absolutePath) and not self.isFileReleased(absolutePath):
+                self.remove(filePath, force=True)
 
         return True
         
