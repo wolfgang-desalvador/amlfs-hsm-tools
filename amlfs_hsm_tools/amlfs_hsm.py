@@ -80,7 +80,8 @@ class AzureManagedLustreHSM:
     def causesOverwriteWithDataLoss(self, filePath):
         HSMTargetPath = self.getHSMPath(filePath) or get_relative_path(filePath)
         causesDataLoss = self.isFileOnHSM(HSMTargetPath) and not self.isFileArchived(filePath)
-        logging.warn('Writing down data to blob on file {} causes data loss. No action will be mode for archive.'.format(filePath))
+        if causesDataLoss:
+            logging.warn('Writing down data to blob on file {} causes data loss. No action will be made for archive.'.format(filePath))
         return causesDataLoss
 
     def checkFileAlignment(self, filePath):
