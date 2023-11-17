@@ -1,9 +1,23 @@
 import ctypes
 import os
 
-from .lustre_hsm_constants import HSM_STATE_MAP
+from .lustre_hsm_constants import HSM_STATE_MAP, HSM_ACTION_MAP
 
-from .lustreapi import llapi_hsm_state_get, llapi_hsm_state_set, hsm_state, llapi_hsm_request, llapi_hsm_user_request_alloc, path2fid
+from .lustreapi import lustre, path2fid
+from .lustre_hsm_classes import hsm_state, hsm_user_request
+
+
+lustre.llapi_hsm_state_get.argtypes = [ctypes.c_char_p, ctypes.POINTER(hsm_state)]
+lustre.llapi_hsm_state_set.argtypes = [ctypes.c_char_p, ctypes.c_uint,
+                                       ctypes.c_uint, ctypes.c_uint]
+lustre.llapi_hsm_user_request_alloc.restype = hsm_user_request
+lustre.llapi_hsm_request.argtypes = [ctypes.c_char_p, ctypes.POINTER(hsm_user_request)]
+
+
+llapi_hsm_state_get = lustre.llapi_hsm_state_get
+llapi_hsm_state_set = lustre.llapi_hsm_state_set
+llapi_hsm_user_request_alloc = lustre.llapi_hsm_user_request_alloc
+llapi_hsm_request = lustre.llapi_hsm_request
 
 
 def hsm_states_list_from_status_flag(status_flag):
@@ -44,7 +58,7 @@ def set_hsm_state(filename, setmask, clearmask, archive_id):
 def hsm_request(filePath, action):
 
     hsm_user_request = llapi_hsm_user_request_alloc(1, 1)
-    hsm_user_request.hur_request.hr_action = 10
+    hsm_user_request.hur_request.hr_action = HSM_ACTION_MAP[action]
     hsm_user_request.hur_request.hr_archive_id = 0
     hsm_user_request.hur_request.hr_archive_id = 0
 
@@ -54,3 +68,10 @@ def hsm_request(filePath, action):
 
     hsm_user_request.hur_request.hr_itemcount = 1
     hsm_user_request.hur_request.hr_data_len = 1
+
+    err = llapi_hsm_request(filePath, ctypes.byref(hsm_user_request))
+
+    if err < 0:
+        err = 0 - err
+        raise IOError(err, os.strerror(err))
+    

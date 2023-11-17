@@ -22,10 +22,12 @@ def main():
     
     logger = logging.getLogger()
     if args.verbose == 0:
-        logger.setLevel(logging.WARN)
+        logger.setLevel(logging.ERROR)
     elif args.verbose == 1:
+        logger.setLevel(logging.WARN)
+    elif args.verbose == 2:
         logger.setLevel(logging.DEBUG)
-    else:
+    elif args.verbose == 3:
         logger.setLevel(logging.INFO)
 
     file_names = args.filenames
