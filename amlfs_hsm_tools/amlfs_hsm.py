@@ -134,6 +134,9 @@ class AzureManagedLustreHSM:
         else:
             logging.error('Failed in setting hsm_state correctly. Please check the file {} status.'.format(absolutePath))
 
+    def restore(self, filePath, force=False):
+        self.runHSMAction(HUA_RESTORE, filePath)
+
     def release(self, filePath, force=False):
         absolutePath = os.path.abspath(filePath)
 
@@ -158,6 +161,7 @@ class AzureManagedLustreHSM:
     def check(self, filePath, force=False):
         absolutePath = os.path.abspath(filePath)
         if not self.isFileHealthyInHSM(absolutePath):
+            self.restore(filePath)
             logging.warn('File {} seems not to be anymore on the HSM backend. Marking as dirty and lost.'.format(absolutePath))
             self.markDirty(absolutePath)
             self.markLost(absolutePath)
