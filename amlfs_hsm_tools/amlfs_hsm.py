@@ -161,8 +161,6 @@ class AzureManagedLustreHSM:
             logging.warn('File {} seems not to be anymore on the HSM backend. Marking as dirty and lost.'.format(absolutePath))
             self.markDirty(absolutePath)
             self.markLost(absolutePath)
-            if not self.isFilePathAlignedInHSM(absolutePath) and not self.isFileReleased(absolutePath):
-                self.remove(filePath, force=True)
 
         return True
         
