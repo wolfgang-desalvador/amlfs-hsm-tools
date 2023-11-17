@@ -37,7 +37,9 @@ class AzureManagedLustreHSM:
         return self.client.get_blob_client(container=self.client.containerName, blob=get_relative_path(filePath))
     
     def isFileOnHSM(self, filePath):
-        return self.getBlobClient(filePath).exists()
+        ifFileOnHSM = self.getBlobClient(filePath).exists()
+        logging.info('File {} seems to be present on HSM location.'.format(filePath))
+        return ifFileOnHSM
 
     def isFileReleased(self, filePath):
         fileStatus = self.getHSMState(filePath)
@@ -70,10 +72,13 @@ class AzureManagedLustreHSM:
 
     def checkFileAlignment(self, filePath):
         lustreUUID = xattr.getxattr(filePath, "trusted.lhsm_uuid").decode()
-        return not lustreUUID or lustreUUID == get_relative_path(filePath) 
+        isFileAligned = not lustreUUID or lustreUUID == get_relative_path(filePath) 
+        logging.info('File {} seems aligned with HSM location.'.format(filePath))
+        return isFileAligned
 
     def isFileHealthyInHSM(self, filePath):
         if not self.isFileArchived(filePath):
+            logging.info('File {} seems not to be archived. Nothing to check.'.format(filePath))
             return True
         else:
           return self.isFileOnHSM(filePath) and self.checkFileAlignment(filePath)
@@ -84,7 +89,7 @@ class AzureManagedLustreHSM:
             self.check(filePath)
         except Exception as error:
             if force:
-                logging.info('File {} seems not to be anymore on Lustre, continuning since forcing.'.format(absolutePath))
+                logging.warn('File {} seems not to be anymore on Lustre, continuning since forcing.'.format(absolutePath))
             else:
                 raise error
         
@@ -100,9 +105,9 @@ class AzureManagedLustreHSM:
                 blobClient.delete_blob()
             except ResourceNotFoundError as error:
                 if force:
-                    logging.info('File {} seems not to be anymore on the HSM backend.'.format(absolutePath))
+                    logging.warn('File {} seems not to be anymore on the HSM backend.'.format(absolutePath))
                 else:
-                    logging.error('File {} seems not to be anymore on the HSM backend even if hsm_state expects it to be there.'.format(filePath))
+                    logging.warn('File {} seems not to be anymore on the HSM backend even if hsm_state expects it to be there.'.format(filePath))
         else:
             logging.error('Failed in setting hsm_state correctly. Please check the file {} status.'.format(absolutePath))
 
@@ -128,7 +133,7 @@ class AzureManagedLustreHSM:
     def check(self, filePath, force=False):
         absolutePath = os.path.abspath(filePath)
         if not self.isFileHealthyInHSM(absolutePath):
-            logging.error('File {} seems not to be anymore on the HSM backend. Marking as dirty and lost.'.format(absolutePath))
+            logging.warn('File {} seems not to be anymore on the HSM backend. Marking as dirty and lost.'.format(absolutePath))
             self.markDirty(absolutePath)
             self.markLost(absolutePath)
             return False
