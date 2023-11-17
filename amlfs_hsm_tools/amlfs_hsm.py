@@ -1,14 +1,15 @@
 import os
 import logging
 import subprocess
-
 import xattr
 
 from .lustreapi_hsm import get_hsm_state, set_hsm_state
 from .lfs_blob_client import LFSBlobClient
-from .lustre_hsm_constants import HSM_ARCHIVED_STATE, HSM_DIRTY_STATE, HSM_EXISTS_STATE, HSM_LOST_STATE, HSM_NOARCHIVE_STATE, \
-                                  HSM_NONE_STATE, HSM_NORELEASE_STATE, HSM_RELEASED_STATE
+from .lustre_hsm_constants import HSM_ARCHIVED_STATE, HSM_DIRTY_STATE, HSM_LOST_STATE, HSM_RELEASED_STATE, \
+                                HUA_ARCHIVE, HUA_REMOVE, HUA_RELEASE, HUA_RESTORE
 from .utilities import get_relative_path
+from .lustreapi_hsm import hsm_request
+
 from azure.core.exceptions import ResourceNotFoundError
 
 
@@ -27,9 +28,9 @@ class AzureManagedLustreHSM:
     @staticmethod
     def runHSMAction(action, filePath):
         try:
-            subprocess.check_output(['lfs', action, filePath])
+            hsm_request(filePath, action)
             return True
-        except subprocess.CalledProcessError as error:
+        except Exception as error:
             logging.error('LFS command failed with error {}. '.format(str(error)))
             return False
         
@@ -109,7 +110,7 @@ class AzureManagedLustreHSM:
         
         if os.path.exists(filePath):
             if not self.isFileReleased(filePath):
-                if self.runHSMAction('hsm_remove', absolutePath):
+                if self.runHSMAction(HUA_REMOVE, absolutePath):
                     logging.info('File {} successfully removed from HSM backend.'.format(absolutePath))
                 else:
                     logging.error('File {} failed to remove from HSM backend.'.format(absolutePath))
@@ -133,7 +134,7 @@ class AzureManagedLustreHSM:
         if self.check(absolutePath):
             if self.isFileReleased(absolutePath):
                 logging.info('File {} already released.'.format(absolutePath))
-            elif self.runHSMAction('hsm_release', absolutePath):
+            elif self.runHSMAction(HUA_RELEASE, absolutePath):
                 logging.info('File {} successfully released.'.format(absolutePath))
             else:
                 logging.error('File {} failed to release.'.format(absolutePath))
@@ -143,7 +144,7 @@ class AzureManagedLustreHSM:
     def archive(self, filePath, force=False):
         absolutePath = os.path.abspath(filePath)
         if self.check(absolutePath) and not self.causesOverwriteWithDataLoss(filePath):
-            if self.runHSMAction('hsm_archive', absolutePath):
+            if self.runHSMAction(HUA_ARCHIVE, absolutePath):
                 logging.info('File {} successfully archived.'.format(absolutePath))
             else:
                 logging.error('File {} failed to archive.'.format(absolutePath))
