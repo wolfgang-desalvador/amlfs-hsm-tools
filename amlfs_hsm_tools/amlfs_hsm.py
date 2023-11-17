@@ -114,10 +114,10 @@ class AzureManagedLustreHSM:
     def release(self, filePath, force=False):
         absolutePath = os.path.abspath(filePath)
 
-        if self.isFileReleased(absolutePath):
-            logging.info('File {} already released.'.format(absolutePath))
-        elif self.check(absolutePath):
-            if self.runHSMAction('hsm_release', absolutePath):
+        if self.check(absolutePath):
+            if self.isFileReleased(absolutePath):
+                logging.info('File {} already released.'.format(absolutePath))
+            elif self.runHSMAction('hsm_release', absolutePath):
                 logging.info('File {} successfully released.'.format(absolutePath))
             else:
                 logging.error('File {} failed to release.'.format(absolutePath))
@@ -136,9 +136,11 @@ class AzureManagedLustreHSM:
     def check(self, filePath, force=False):
         absolutePath = os.path.abspath(filePath)
         if not self.isFileHealthyInHSM(absolutePath):
+            if self.isFileArchived(absolutePath) and not self.isFileReleased(absolutePath):
+                self.runHSMAction('hsm_restore', absolutePath)
             logging.warn('File {} seems not to be anymore on the HSM backend. Marking as dirty and lost.'.format(absolutePath))
             self.markDirty(absolutePath)
             self.markLost(absolutePath)
-            return False
+
         return True
         
