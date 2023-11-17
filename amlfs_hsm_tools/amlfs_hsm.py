@@ -2,6 +2,7 @@ import os
 import logging
 import subprocess
 import xattr
+import time
 
 from .lustreapi_hsm import get_hsm_state, set_hsm_state
 from .lfs_blob_client import LFSBlobClient
@@ -104,6 +105,12 @@ class AzureManagedLustreHSM:
         else:
           return self.isFileOnHSM(get_relative_path(filePath)) and self.isFilePathAlignedInHSM(filePath)
 
+    def callActionAndWaitStatus(self, action, filePath, targetAddStates, targetRemoveStates, interval=1):
+        if self.runHSMAction(action, filePath):
+            while any(state for state in targetRemoveStates in self.getHSMState(filePath)) or not all(state for state in targetAddStates in self.getHSMState(filePath)):
+                time.sleep(interval)
+
+
     def remove(self, filePath, force=False):
         absolutePath = os.path.abspath(filePath)
         try:
@@ -161,7 +168,7 @@ class AzureManagedLustreHSM:
     def check(self, filePath, force=False):
         absolutePath = os.path.abspath(filePath)
         if not self.isFileHealthyInHSM(absolutePath):
-            self.restore(filePath)
+            self.callActionAndWaitStatus(HUA_RESTORE, filePath, [], [HSM_RELEASED_STATE])
             logging.warn('File {} seems not to be anymore on the HSM backend. Marking as dirty and lost.'.format(absolutePath))
             self.markDirty(absolutePath)
             self.markLost(absolutePath)
