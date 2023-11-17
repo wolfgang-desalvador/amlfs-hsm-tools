@@ -41,7 +41,7 @@ class AzureManagedLustreHSM:
             return None
     
     def getBlobClient(self, filePath):
-        return self.client.get_blob_client(container=self.client.containerName, blob=get_relative_path(filePath))
+        return self.client.get_blob_client(container=self.client.containerName, blob=filePath)
     
     def isFileOnHSM(self, filePath):
         ifFileOnHSM = self.getBlobClient(filePath).exists()
@@ -95,7 +95,7 @@ class AzureManagedLustreHSM:
             logging.info('File {} seems not to be archived. Nothing to check.'.format(filePath))
             return True
         else:
-          return self.isFileOnHSM(filePath) and self.checkFileAlignment(filePath)
+          return self.isFileOnHSM(get_relative_path(filePath)) and self.checkFileAlignment(filePath)
 
     def remove(self, filePath, force=False):
         absolutePath = os.path.abspath(filePath)
@@ -115,7 +115,7 @@ class AzureManagedLustreHSM:
                     logging.error('File {} failed to remove from HSM backend.'.format(absolutePath))
         elif force:
             try:      
-                blobClient = self.getBlobClient(absolutePath)
+                blobClient = self.getBlobClient(get_relative_path(absolutePath))
                 blobClient.delete_blob()
             except ResourceNotFoundError as error:
                 if force:
