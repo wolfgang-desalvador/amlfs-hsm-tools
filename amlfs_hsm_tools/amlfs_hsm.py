@@ -107,8 +107,8 @@ class AzureManagedLustreHSM:
 
     def callActionAndWaitStatus(self, action, filePath, targetAddStates, targetRemoveStates, interval=1):
         if self.runHSMAction(action, filePath):
-            while (targetRemoveStates and any(state for state in targetRemoveStates in self.getHSMState(filePath))) \
-                  or (targetAddStates and not all(state for state in targetAddStates in self.getHSMState(filePath))):
+            while (targetRemoveStates and any(state in self.getHSMState(filePath) for state in targetRemoveStates)) \
+                  or (targetAddStates and not all(state in self.getHSMState(filePath) for state in targetAddStates)):
                 time.sleep(interval)
 
 
