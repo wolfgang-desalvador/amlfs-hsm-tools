@@ -10,9 +10,23 @@ def main():
     parser.add_argument('action', choices=['release', 'archive', 'remove', 'check'])
     parser.add_argument('-f', '--force', default=False, required=False, action='store_true', help='This forces removal from Blob Storage independently from the HSM status. Use carefully.')     
     parser.add_argument('filenames', nargs='+', type=str)
+    parser.add_argument('-v', '--verbose', action='count', default=0, type=int)
     args, extras = parser.parse_known_args()
     
     logger = logging.getLogger()
+    logging.basicConfig(format='%(filename)s: '    
+                                '%(levelname)s: '
+                                '%(funcName)s(): '
+                                '%(lineno)d:\t'
+                                '%(message)s')
+    if args.verbose == 0:
+        logger.setLevel(logging.ERROR)
+    elif args.verbose == 1:
+        logger.setLevel(logging.WARN)
+    elif args.verbose == 2:
+        logger.setLevel(logging.DEBUG)
+    else:
+        logger.setLevel(logging.INFO)
 
     file_names = args.filenames
    
