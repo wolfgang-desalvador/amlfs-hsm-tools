@@ -37,7 +37,7 @@ class AzureManagedLustreHSM:
         return self.client.get_blob_client(container=self.client.containerName, blob=get_relative_path(filePath))
     
     def isFileOnHSM(self, filePath):
-        return self.getBlobClient(get_relative_path(filePath)).exists()
+        return self.getBlobClient(filePath).exists()
 
     def isFileReleased(self, filePath):
         fileStatus = self.getHSMState(filePath)
