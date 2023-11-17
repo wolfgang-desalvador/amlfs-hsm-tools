@@ -35,7 +35,10 @@ class AzureManagedLustreHSM:
         
     @staticmethod
     def getHSMPath(filePath):
-        return xattr.getxattr(filePath, "trusted.lhsm_uuid").decode()
+        try:
+            return xattr.getxattr(filePath, "trusted.lhsm_uuid").decode()
+        except OSError:
+            return None
     
     def getBlobClient(self, filePath):
         return self.client.get_blob_client(container=self.client.containerName, blob=get_relative_path(filePath))
@@ -75,7 +78,8 @@ class AzureManagedLustreHSM:
         self.markHSMState(HSM_DIRTY_STATE, filePath)
 
     def causesOverwriteWithDataLoss(self, filePath):
-        causesDataLoss = self.isFileOnHSM(self.getHSMPath(filePath)) and not self.isFileArchived(filePath)
+        HSMTargetPath = self.getHSMPath(filePath) | get_relative_path(filePath)
+        causesDataLoss = self.isFileOnHSM(HSMTargetPath) and not self.isFileArchived(filePath)
         logging.warn('Writing down data to blob on file {} causes data loss. No action will be mode for archive.'.format(filePath))
         return causesDataLoss
 
