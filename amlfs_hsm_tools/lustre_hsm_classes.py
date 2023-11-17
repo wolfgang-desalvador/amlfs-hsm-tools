@@ -16,7 +16,7 @@ class hsm_state(ctypes.Structure):
         ("hus_in_progress_state", ctypes.c_uint),
         ("hus_in_progress_action", ctypes.c_uint),
         ("hus_in_progress_location", hsm_extent),
-        ("hus_extended_info", ctypes.c_char * 1),
+        ("hus_extended_info", ctypes.c_char),
         ]
 
 class hsm_request(ctypes.Structure):
@@ -39,6 +39,6 @@ class hsm_user_item(ctypes.Structure):
 class hsm_user_request(ctypes.Structure):
      _fields_ = [
          ("hur_request", hsm_request),
-         ("hur_user_item", hsm_user_item)
+         ("hur_user_item", hsm_user_item * 1)
      ]
 
