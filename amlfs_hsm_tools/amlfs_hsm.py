@@ -84,7 +84,7 @@ class AzureManagedLustreHSM:
         return causesDataLoss
 
     def checkFileAlignment(self, filePath):
-        lustreUUID = self.getHSMPath()
+        lustreUUID = self.getHSMPath(filePath)
         isFileAligned = not lustreUUID or lustreUUID == get_relative_path(filePath) 
         logging.info('File {} seems aligned with HSM location.'.format(filePath))
         return isFileAligned
