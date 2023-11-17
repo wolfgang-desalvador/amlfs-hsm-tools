@@ -113,7 +113,10 @@ class AzureManagedLustreHSM:
 
     def release(self, filePath, force=False):
         absolutePath = os.path.abspath(filePath)
-        if self.check(absolutePath):
+
+        if self.isFileReleased(absolutePath):
+            logging.info('File {} already released.'.format(absolutePath))
+        elif self.check(absolutePath):
             if self.runHSMAction('hsm_release', absolutePath):
                 logging.info('File {} successfully released.'.format(absolutePath))
             else:
