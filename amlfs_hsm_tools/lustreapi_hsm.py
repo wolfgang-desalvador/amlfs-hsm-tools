@@ -69,7 +69,7 @@ def hsm_request(filePath, action):
     hsm_user_request.hur_request.hr_itemcount = 1
     hsm_user_request.hur_request.hr_data_len = 1
 
-    err = llapi_hsm_request(filePath, ctypes.byref(hsm_user_request))
+    err = llapi_hsm_request(filePath.encode('utf-8'), ctypes.byref(hsm_user_request))
 
     if err < 0:
         err = 0 - err
