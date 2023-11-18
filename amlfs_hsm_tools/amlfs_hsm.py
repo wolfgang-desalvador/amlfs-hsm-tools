@@ -169,7 +169,8 @@ class AzureManagedLustreHSM:
         absolutePath = os.path.abspath(filePath)
         if not self.isFileHealthyInHSM(absolutePath):
             logging.error('File {} seems not to be anymore on the HSM backend. Attempting recovery and marking as dirty and lost.'.format(absolutePath))
-            self.callActionAndWaitStatus(HUA_RESTORE, filePath, [], [HSM_RELEASED_STATE])
+            if self.isFileReleased(filePath):
+                self.callActionAndWaitStatus(HUA_RESTORE, filePath, [], [HSM_RELEASED_STATE])
             self.markDirty(absolutePath)
             self.markLost(absolutePath)
             return False
