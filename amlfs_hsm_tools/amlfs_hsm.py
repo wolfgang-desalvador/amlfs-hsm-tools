@@ -56,7 +56,7 @@ class AzureManagedLustreHSM:
         if isFileOnHSM:
             logging.info('File {} seems to be present on HSM location.'.format(filePath))
         else:
-            logging.warn('File {} is not on HSM in the expected position.'.format(filePath))
+            logging.info('File {} is not on HSM in the expected position.'.format(filePath))
         return isFileOnHSM
 
     def isFileReleased(self, filePath):
