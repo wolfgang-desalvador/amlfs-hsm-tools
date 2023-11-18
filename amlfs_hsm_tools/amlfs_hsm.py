@@ -93,7 +93,7 @@ class AzureManagedLustreHSM:
             HSMTargetPath = get_relative_path(filePath)
         else:
             HSMTargetPath = self.getHSMPath(filePath)
-        causesDataLoss = self.isFileOnHSM(HSMTargetPath) and not self.isFileArchived(filePath)
+        causesDataLoss = self.isFileOnHSM(HSMTargetPath) and ((self.isFileDirty(filePath) and self.isFileLost(filePath)) or not self.isFileArchived(filePath))
         if causesDataLoss:
             logging.error('Writing down data to blob on file {} causes data loss. No action will be made for archive.'.format(filePath))
         return causesDataLoss
