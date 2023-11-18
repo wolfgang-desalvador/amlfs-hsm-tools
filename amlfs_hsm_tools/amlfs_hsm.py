@@ -89,7 +89,10 @@ class AzureManagedLustreHSM:
         self.markHSMState(HSM_DIRTY_STATE, filePath)
 
     def causesOverwriteWithDataLoss(self, filePath):
-        HSMTargetPath = self.getHSMPath(filePath) or get_relative_path(filePath)
+        if self.isFileDirty(filePath) and self.isFileLost(filePath):
+            HSMTargetPath = get_relative_path(filePath)
+        else:
+            HSMTargetPath = self.getHSMPath(filePath)
         causesDataLoss = self.isFileOnHSM(HSMTargetPath) and not self.isFileArchived(filePath)
         if causesDataLoss:
             logging.error('Writing down data to blob on file {} causes data loss. No action will be made for archive.'.format(filePath))
