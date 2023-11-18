@@ -89,7 +89,7 @@ class AzureManagedLustreHSM:
         self.markHSMState(HSM_DIRTY_STATE, filePath)
 
     def causesOverwriteWithDataLoss(self, filePath):
-        if self.isFileDirty(filePath) and self.isFileLost(filePath):
+        if (self.isFileDirty(filePath) and self.isFileLost(filePath)) or not self.isFileArchived(filePath):
             HSMTargetPath = get_relative_path(filePath)
         else:
             HSMTargetPath = self.getHSMPath(filePath)
