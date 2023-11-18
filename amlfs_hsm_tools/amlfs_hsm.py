@@ -45,6 +45,12 @@ class AzureManagedLustreHSM:
     def getBlobClient(self, filePath):
         return self.client.get_blob_client(container=self.client.containerName, blob=filePath)
     
+    def callActionAndWaitStatus(self, action, filePath, targetAddStates, targetRemoveStates, interval=1):
+        if self.runHSMAction(action, filePath):
+            while (targetRemoveStates and any(state in self.getHSMState(filePath) for state in targetRemoveStates)) \
+                  or (targetAddStates and not all(state in self.getHSMState(filePath) for state in targetAddStates)):
+                time.sleep(interval)
+
     def isFileOnHSM(self, filePath):
         isFileOnHSM = self.getBlobClient(filePath).exists()
         if isFileOnHSM:
@@ -86,7 +92,7 @@ class AzureManagedLustreHSM:
         HSMTargetPath = self.getHSMPath(filePath) or get_relative_path(filePath)
         causesDataLoss = self.isFileOnHSM(HSMTargetPath) and not self.isFileArchived(filePath)
         if causesDataLoss:
-            logging.warn('Writing down data to blob on file {} causes data loss. No action will be made for archive.'.format(filePath))
+            logging.error('Writing down data to blob on file {} causes data loss. No action will be made for archive.'.format(filePath))
         return causesDataLoss
 
     def isFilePathAlignedInHSM(self, filePath):
@@ -95,7 +101,7 @@ class AzureManagedLustreHSM:
         if isFileAligned:
             logging.info('File {} seems aligned with HSM location.'.format(filePath))
         else:
-            logging.info('File {} seems to point to another HSM location {}.'.format(filePath, lustreUUID))
+            logging.error('File {} seems to point to another HSM location {}.'.format(filePath, lustreUUID))
         return isFileAligned
 
     def isFileHealthyInHSM(self, filePath):
@@ -104,13 +110,6 @@ class AzureManagedLustreHSM:
             return True
         else:
           return self.isFileOnHSM(get_relative_path(filePath)) and self.isFilePathAlignedInHSM(filePath)
-
-    def callActionAndWaitStatus(self, action, filePath, targetAddStates, targetRemoveStates, interval=1):
-        if self.runHSMAction(action, filePath):
-            while (targetRemoveStates and any(state in self.getHSMState(filePath) for state in targetRemoveStates)) \
-                  or (targetAddStates and not all(state in self.getHSMState(filePath) for state in targetAddStates)):
-                time.sleep(interval)
-
 
     def remove(self, filePath, force=False):
         absolutePath = os.path.abspath(filePath)
@@ -136,9 +135,9 @@ class AzureManagedLustreHSM:
                 blobClient.delete_blob()
             except ResourceNotFoundError as error:
                 if force:
-                    logging.warn('File {} seems not to be anymore on the HSM backend.'.format(absolutePath))
+                    logging.error('File {} seems not to be anymore on the HSM backend.'.format(absolutePath))
                 else:
-                    logging.warn('File {} seems not to be anymore on the HSM backend even if hsm_state expects it to be there.'.format(filePath))
+                    logging.error('File {} seems not to be anymore on the HSM backend even if hsm_state expects it to be there.'.format(filePath))
         else:
             logging.error('Failed in setting hsm_state correctly. Please check the file {} status.'.format(absolutePath))
 
@@ -169,8 +168,8 @@ class AzureManagedLustreHSM:
     def check(self, filePath, force=False):
         absolutePath = os.path.abspath(filePath)
         if not self.isFileHealthyInHSM(absolutePath):
+            logging.error('File {} seems not to be anymore on the HSM backend. Attempting recovery and marking as dirty and lost.'.format(absolutePath))
             self.callActionAndWaitStatus(HUA_RESTORE, filePath, [], [HSM_RELEASED_STATE])
-            logging.warn('File {} seems not to be anymore on the HSM backend. Marking as dirty and lost.'.format(absolutePath))
             self.markDirty(absolutePath)
             self.markLost(absolutePath)
 
