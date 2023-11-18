@@ -172,6 +172,7 @@ class AzureManagedLustreHSM:
             self.callActionAndWaitStatus(HUA_RESTORE, filePath, [], [HSM_RELEASED_STATE])
             self.markDirty(absolutePath)
             self.markLost(absolutePath)
-
-        return True
+            return False
+        else:
+            return True
         
