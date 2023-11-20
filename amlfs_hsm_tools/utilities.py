@@ -1,6 +1,7 @@
 import json
 import os
 
+
 def loadConfiguration(file):
     with open(file, 'r') as fid:
         configuration = json.load(fid)

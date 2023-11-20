@@ -50,6 +50,16 @@ amlfs_hsm_tools release FILENAME1 [FILENAME2, FILENAME3...]
 amlfs_hsm_tools remove FILENAME1 [FILENAME2, FILENAME3...]
 ```
 
+## Checks
+
+In order to perform a full filesystem check run the following command:
+
+```bash
+nohup find local/directory -type f -print0 | xargs -0 -n 1 sudo amlfs_hsm_tools check &
+```
+
+At the end of the check, all files will be marked as dirty / lost in case they require another archive operation.
+
 ## Contributing
 
 This project welcomes contributions and suggestions.  Most contributions require you to agree to a

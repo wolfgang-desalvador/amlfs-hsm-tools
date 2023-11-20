@@ -2,12 +2,12 @@ import ctypes
 
 from .lustreapi_classes import lu_fid
 
+
 class hsm_extent(ctypes.Structure):
     _fields_ = [
         ("offset", ctypes.c_ulonglong),
         ("length", ctypes.c_ulonglong),
 ]
-
 
 class hsm_state(ctypes.Structure):
     _fields_ = [

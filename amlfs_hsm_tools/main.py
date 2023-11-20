@@ -5,7 +5,8 @@ import argparse
 from .amlfs_hsm import AzureManagedLustreHSM
 
 def main():
-    parser = argparse.ArgumentParser(prog='Azure Managed Lustre HSM tools', description='This utility helps managing Lustre HSM with Azure Blob Lustre HSM backend.')
+    parser = argparse.ArgumentParser(prog='Azure Managed Lustre HSM tools', \
+                                     description='This utility helps managing Lustre HSM with Azure Blob Lustre HSM backend.')
 
     parser.add_argument('action', choices=['release', 'archive', 'remove', 'check'])
     parser.add_argument('-f', '--force', default=False, required=False, action='store_true', help='This forces removal from Blob Storage independently from the HSM status. Use carefully.')     
