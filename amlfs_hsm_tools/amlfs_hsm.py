@@ -270,7 +270,7 @@ class AzureManagedLustreHSM:
             bool: if the file is healthy
         """
         absolutePath = os.path.abspath(filePath)
-        if not self.isFileOnHSM(absolutePath):
+        if not self.isFileOnHSM(filePath):
             logging.error('File {} seems not to be anymore on the HSM backend. Marking as dirty and lost.'.format(absolutePath))
             self.markDirty(absolutePath)
             self.markLost(absolutePath)
