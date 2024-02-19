@@ -247,7 +247,7 @@ class AzureManagedLustreHSM:
         """
         absolutePath = os.path.abspath(filePath)
 
-        if self.check(absolutePath) and not self.fileNeedsArchive(absolutePath):
+        if self.check(filePath) and not self.fileNeedsArchive(absolutePath):
             if self.isFileReleased(absolutePath):
                 logging.info('File {} already released.'.format(absolutePath))
             elif self.runHSMAction(HUA_RELEASE, absolutePath):
