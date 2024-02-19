@@ -233,7 +233,7 @@ class AzureManagedLustreHSM:
         self.runHSMAction(HUA_RESTORE, os.path.abspath(filePath))
     
     def archive(self, filePath, force=False):
-        self.runHSMAction(HUA_RESTORE, os.path.abspath(filePath))
+        self.runHSMAction(HUA_ARCHIVE, os.path.abspath(filePath))
 
     def release(self, filePath, force=False):
         """Releases a file to the HSM backend. 
