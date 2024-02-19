@@ -1,6 +1,5 @@
 import os
 import logging
-import xattr
 import time
 
 from .lustreapi_hsm import get_hsm_state, set_hsm_state
@@ -57,23 +56,6 @@ class AzureManagedLustreHSM:
             logging.error('LFS command failed with error {}. '.format(str(error)))
             return False
         
-    @staticmethod
-    def copyToolPath(filePath):
-        """Returns the HSM file path that is written in the UUID attribute.
-        This parameter is the path effectively used by copytool for subsequent operations 
-        after file archive. If file gets moved or renamed, the copytool will still refer to
-        this path for release/restore operations. It is updated if file is marked as dirty.
-
-        Args:
-            filePath (str): file path on which the HSM path needs to be determined.
-
-        Returns:
-            (str | None): string describing the copytool path or None if not available
-        """
-        try:
-            return xattr.getxattr(filePath, "trusted.lhsm_uuid").decode()
-        except OSError:
-            return None
     
     def getBlobClient(self, filePath):
         """Returns a blob client pointing to the filepath in the Blob backend.
@@ -201,62 +183,6 @@ class AzureManagedLustreHSM:
         """
         self.markHSMState(HSM_DIRTY_STATE, filePath)
 
-    def causesOverwriteWithDataLoss(self, filePath):
-        """Checks if triggering an archive/release operation on the specific file
-        can cause data loss. The logic of this function is that:
-        - if file is archived in clean state, it checks if the copytool path exists on blob
-        - if file is not archived in clean state, it checks that the official file path is not present
-        on blob
-
-        Args:
-            filePath (str): file path on the file system
-        Returns:
-            bool: describing if data loss may happen from an operation
-        """
-        if self.fileNeedsArchive(filePath):
-            HSMTargetPath = get_relative_path(filePath)
-        else:
-            HSMTargetPath = self.copyToolPath(filePath)
-        causesDataLoss = self.isFileOnHSM(HSMTargetPath) and self.fileNeedsArchive(filePath)
-        if causesDataLoss:
-            logging.error('Writing down data to blob on file {} causes data loss. No action will be made for archive.'.format(filePath))
-        return causesDataLoss
-
-    def isFilePathAlignedInHSM(self, filePath):
-        """Checks if the relative file path on AMLFS is coincident to the one
-        of the copytool
-
-        Args:
-            filePath (str): file path on the file system
-
-        Returns:
-            bool: describing if the two file paths are aligned
-        """
-        lustreUUID = self.copyToolPath(filePath)
-        isFileAligned = not lustreUUID or lustreUUID == get_relative_path(filePath)
-        if isFileAligned:
-            logging.info('File {} seems aligned with HSM location.'.format(filePath))
-        else:
-            logging.error('File {} seems to point to another HSM location {}.'.format(filePath, lustreUUID))
-        return isFileAligned
-
-    def isFileHealthyInHSM(self, filePath):
-        """Determines health HSM state for archived file on the basis of two criteria, both required:
-        - The current file path is aligned with the copytool filepath
-        - The current file path has a file in HSM
-
-        Args:
-            filePath (str): file path on the file system 
-
-        Returns:
-            bool: describing if the file is in an healthy HSM state
-        """
-        if not self.isFileArchived(filePath):
-            logging.info('File {} seems not to be archived. Nothing to check.'.format(filePath))
-            return True
-        else:
-          return self.isFileOnHSM(get_relative_path(filePath)) and self.isFilePathAlignedInHSM(filePath)
-
     def remove(self, filePath, force=False):
         """Removes a file from the HSM backend. 
         - It checks the status of the file in terms of health, if not healthy it exits (if no force)
@@ -289,7 +215,7 @@ class AzureManagedLustreHSM:
                 self.markDirty(filePath)
                 self.markLost(filePath)
         elif force:
-            try:      
+            try:
                 blobClient = self.getBlobClient(get_relative_path(absolutePath))
                 blobClient.delete_blob()
             except ResourceNotFoundError as error:
@@ -297,10 +223,16 @@ class AzureManagedLustreHSM:
                     logging.error('File {} seems not to be anymore on the HSM backend.'.format(absolutePath))
                 else:
                     logging.error('File {} seems not to be anymore on the HSM backend even if hsm_state expects it to be there.'.format(filePath))
+            if os.path.exists(filePath):
+                    self.markDirty(filePath)
+                    self.markLost(filePath)
         else:
             logging.error('Failed in setting hsm_state correctly. Please check the file {} status.'.format(absolutePath))
 
     def restore(self, filePath, force=False):
+        self.runHSMAction(HUA_RESTORE, filePath)
+    
+    def archive(self, filePath, force=False):
         self.runHSMAction(HUA_RESTORE, filePath)
 
     def release(self, filePath, force=False):
@@ -315,7 +247,7 @@ class AzureManagedLustreHSM:
         """
         absolutePath = os.path.abspath(filePath)
 
-        if self.check(absolutePath):
+        if self.check(absolutePath) and not self.fileNeedsArchive(absolutePath):
             if self.isFileReleased(absolutePath):
                 logging.info('File {} already released.'.format(absolutePath))
             elif self.runHSMAction(HUA_RELEASE, absolutePath):
@@ -325,29 +257,10 @@ class AzureManagedLustreHSM:
         else:
             logging.error('File {} cannot be released since it doesn''t exist anymore on HSM.'.format(absolutePath))
     
-    def archive(self, filePath, force=False):
-        """Archives a file to the HSM backend. 
-        - It checks the status of the file in terms of health, if not healthy it exits
-        - It archives the file
-
-        Args:
-            filePath (str): file path on the file system
-            force (bool, optional): Release is not forced, just keeping for common signature. Defaults to False.
-        """
-        absolutePath = os.path.abspath(filePath)
-        if self.check(absolutePath) and not self.causesOverwriteWithDataLoss(filePath):
-            if self.runHSMAction(HUA_ARCHIVE, absolutePath):
-                logging.info('File {} successfully archived.'.format(absolutePath))
-            else:
-                logging.error('File {} failed to archive.'.format(absolutePath))
-        else:
-            logging.error('File {} is not healthy, cannot archive.'.format(absolutePath))
-    
     def check(self, filePath, force=False):
         """Checks a file state on the HSM backend. 
         - It checks the status of the file in terms of health
-        - If file is not healthy, it tries to recover data from Blob if it has been released
-        - It marks it as dirty and lost
+        - It marks it as dirty and lost if needed
 
         Args:
             filePath (str): file path on the file system
@@ -357,11 +270,8 @@ class AzureManagedLustreHSM:
             bool: if the file is healthy
         """
         absolutePath = os.path.abspath(filePath)
-        if not self.isFileHealthyInHSM(absolutePath) and not self.fileNeedsArchive(filePath):
+        if not self.isFileOnHSM(absolutePath):
             logging.error('File {} seems not to be anymore on the HSM backend. Marking as dirty and lost.'.format(absolutePath))
-            if self.isFileReleased(filePath):
-                logging.error('File {} seems to be released. Trying to restore the content.'.format(absolutePath))
-                self.callActionAndWaitStatus(HUA_RESTORE, filePath, [], [HSM_RELEASED_STATE])
             self.markDirty(absolutePath)
             self.markLost(absolutePath)
             return False
