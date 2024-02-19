@@ -96,7 +96,7 @@ class AzureManagedLustreHSM:
         Returns:
             bool: describing if file is on the backend
         """
-        isFileOnHSM = self.getBlobClient(filePath).exists()
+        isFileOnHSM = self.getBlobClient(get_relative_path(filePath)).exists()
         if isFileOnHSM:
             logging.info('File {} seems to be present on HSM location.'.format(filePath))
         else:
@@ -199,7 +199,7 @@ class AzureManagedLustreHSM:
         """
         absolutePath = os.path.abspath(filePath)
         try:
-            self.check(filePath)
+            self.check(absolutePath)
         except Exception as error:
             if force:
                 logging.warn('File {} seems not to be anymore on Lustre, continuning since forcing.'.format(absolutePath))
@@ -247,7 +247,7 @@ class AzureManagedLustreHSM:
         """
         absolutePath = os.path.abspath(filePath)
 
-        if self.check(filePath) and not self.fileNeedsArchive(absolutePath):
+        if self.check(absolutePath) and not self.fileNeedsArchive(absolutePath):
             if self.isFileReleased(absolutePath):
                 logging.info('File {} already released.'.format(absolutePath))
             elif self.runHSMAction(HUA_RELEASE, absolutePath):
@@ -270,7 +270,7 @@ class AzureManagedLustreHSM:
             bool: if the file is healthy
         """
         absolutePath = os.path.abspath(filePath)
-        if not self.isFileOnHSM(filePath):
+        if not self.isFileOnHSM(absolutePath):
             logging.error('File {} seems not to be anymore on the HSM backend. Marking as dirty and lost.'.format(absolutePath))
             self.markDirty(absolutePath)
             self.markLost(absolutePath)
