@@ -206,14 +206,14 @@ class AzureManagedLustreHSM:
             else:
                 raise error
         
-        if os.path.exists(filePath) and not self.fileNeedsArchive(filePath):
-            if not self.isFileReleased(filePath):
+        if os.path.exists(absolutePath) and not self.fileNeedsArchive(absolutePath):
+            if not self.isFileReleased(absolutePath):
                 if self.runHSMAction(HUA_REMOVE, absolutePath):
                     logging.info('File {} successfully removed from HSM backend.'.format(absolutePath))
                 else:
                     logging.error('File {} failed to remove from HSM backend.'.format(absolutePath))
-                self.markDirty(filePath)
-                self.markLost(filePath)
+                self.markDirty(absolutePath)
+                self.markLost(absolutePath)
         elif force:
             try:
                 blobClient = self.getBlobClient(get_relative_path(absolutePath))
@@ -222,18 +222,18 @@ class AzureManagedLustreHSM:
                 if force:
                     logging.error('File {} seems not to be anymore on the HSM backend.'.format(absolutePath))
                 else:
-                    logging.error('File {} seems not to be anymore on the HSM backend even if hsm_state expects it to be there.'.format(filePath))
-            if os.path.exists(filePath):
-                    self.markDirty(filePath)
-                    self.markLost(filePath)
+                    logging.error('File {} seems not to be anymore on the HSM backend even if hsm_state expects it to be there.'.format(absolutePath))
+            if os.path.exists(absolutePath):
+                    self.markDirty(absolutePath)
+                    self.markLost(absolutePath)
         else:
             logging.error('Failed in setting hsm_state correctly. Please check the file {} status.'.format(absolutePath))
 
     def restore(self, filePath, force=False):
-        self.runHSMAction(HUA_RESTORE, filePath)
+        self.runHSMAction(HUA_RESTORE, os.path.abspath(filePath))
     
     def archive(self, filePath, force=False):
-        self.runHSMAction(HUA_RESTORE, filePath)
+        self.runHSMAction(HUA_RESTORE, os.path.abspath(filePath))
 
     def release(self, filePath, force=False):
         """Releases a file to the HSM backend. 
